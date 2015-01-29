@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
 import bs4
-import urllib3
+import os
+import os.path
 import re
+import time
+import urllib
+import urllib3
 from string import ascii_lowercase
 from random import randint
+
+urllib3.disable_warnings()
+manager = urllib3.PoolManager()
 
 def userGen():
     USER_SEARCH = ('https://boardgamegeek.com/geeksearch.php?action=search&'+
@@ -12,16 +19,13 @@ def userGen():
     num_results_re = re.compile(r'Search Results \(([0-9]+) Matches?\)')
     user_re = re.compile(r'href="/user/([^"]+)"')
 
-    urllib3.disable_warnings()
-    manager = urllib3.PoolManager()
-
     used_tris = set()
 
     while True:
         # search on a random trigraph
-        trigraph = ''.join(ascii_lowercase[randint(0,25)] for i in range(3))
-        while trigraph in used_tris:
+        while True:
             trigraph = ''.join(ascii_lowercase[randint(0,25)] for i in range(3))
+            if trigraph not in used_tris: break
         used_tris.add(trigraph)
         html = manager.request('GET', USER_SEARCH.format(trigraph)).data
 
@@ -41,5 +45,36 @@ def userGen():
                 if m is None: continue
                 yield m.group(1)
 
+def getUserRatings(user):
+    userdir = 'cached_users/'+user[:2]
+    userfile = userdir+'/'+user+'.xml'
+    if not os.path.isfile(userfile):
+        collection_url = 'http://www.boardgamegeek.com/xmlapi/collection/{}?rated=1'
+        while True:
+            html = manager.request('GET', collection_url.format(urllib.parse.quote(user)))
+            if html.status != 202: break
+            time.sleep(0.7)
+        if html.status != 200:
+            print("dying on", collection_url.format(urllib.parse.quote(user)))
+            exit()
+        if not os.path.isdir(userdir):
+            os.mkdir(userdir)
+        items = bs4.BeautifulSoup(html.data).find('items')
+        games = 0
+        if items is not None: games = int(items.get('totalitems'))
+        f = open(userfile, 'wb')
+        if games>0: f.write(html.data)
+        f.close()
+        return games
+    d = open(userfile, 'rb').read()
+    return int(bs4.BeautifulSoup(d).find('items').get('totalitems'))
+
+ten_games = 0
 for u in userGen():
-    print(u)
+    print('getting', u)
+    g = getUserRatings(u)
+    time.sleep(0.2 + randint(0,10)/10)
+    print('got', u, g, ten_games)
+    if g>10:
+        ten_games += 1
+        if ten_games >= 1000: break
