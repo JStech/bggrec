@@ -2,6 +2,7 @@
 
 import bs4
 import os
+import glob
 import os.path
 import re
 import time
@@ -46,8 +47,9 @@ def userGen():
                 yield m.group(1)
 
 def getUserRatings(user):
-    userdir = 'cached_users/'+user[:2]
-    userfile = userdir+'/'+user+'.xml'
+    escaped_user = user.translate(str.maketrans(r'/\?%*:|"<>', '__________'))
+    userdir = 'cached_users/'+escaped_user[:2]
+    userfile = userdir+'/'+escaped_user+'.xml'
     if not os.path.isfile(userfile):
         collection_url = 'http://www.boardgamegeek.com/xmlapi/collection/{}?rated=1'
         while True:
@@ -66,11 +68,20 @@ def getUserRatings(user):
         if games>0: f.write(html.data)
         f.close()
         return games
-    d = open(userfile, 'rb').read()
+    with open(userfile, 'rb') as f:
+        d = f.read()
     if len(d)==0: return 0
     return int(bs4.BeautifulSoup(d).find('items').get('totalitems'))
 
 ten_games = 0
+
+for userfile in glob.iglob('./cached_users/*/*.xml'):
+    with open(userfile, 'rb') as f:
+        d = f.read()
+    if len(d)==0: continue
+    if int(bs4.BeautifulSoup(d).find('items').get('totalitems'))>10:
+        ten_games += 1
+
 for u in userGen():
     print('getting', u)
     g = getUserRatings(u)
