@@ -67,6 +67,7 @@ def getUserRatings(user):
         f.close()
         return games
     d = open(userfile, 'rb').read()
+    if len(d)==0: return 0
     return int(bs4.BeautifulSoup(d).find('items').get('totalitems'))
 
 ten_games = 0
@@ -77,4 +78,4 @@ for u in userGen():
     print('got', u, g, ten_games)
     if g>10:
         ten_games += 1
-        if ten_games >= 1000: break
+        if ten_games >= 2000: break
