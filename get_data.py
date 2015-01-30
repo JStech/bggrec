@@ -23,28 +23,31 @@ def userGen():
     used_tris = set()
 
     while True:
-        # search on a random trigraph
-        while True:
-            trigraph = ''.join(ascii_lowercase[randint(0,25)] for i in range(3))
-            if trigraph not in used_tris: break
-        used_tris.add(trigraph)
-        html = manager.request('GET', USER_SEARCH.format(trigraph)).data
+        try:
+            # search on a random trigraph
+            while True:
+                trigraph = ''.join(ascii_lowercase[randint(0,25)] for i in range(3))
+                if trigraph not in used_tris: break
+            used_tris.add(trigraph)
+            html = manager.request('GET', USER_SEARCH.format(trigraph)).data
 
-        soup = bs4.BeautifulSoup(html, "lxml")
-        h2 = soup.find("h2")
-        m = num_results_re.search(h2.decode())
-        if m is None: continue
-        num_results = int(m.group(1))
-        for page in range(1, (num_results+99)//100 + 1):
-            if page>1:
-                html = manager.request('GET', USER_SEARCH.format(trigraph) +
-                        '&pageID={}'.format(page))
-                soup = bs4.BeautifulSoup(html, "lxml")
-            users = soup.find_all("div", "username")
-            for u in users:
-                m = user_re.search(u.decode())
-                if m is None: continue
-                yield m.group(1)
+            soup = bs4.BeautifulSoup(html, "lxml")
+            h2 = soup.find("h2")
+            m = num_results_re.search(h2.decode())
+            if m is None: continue
+            num_results = int(m.group(1))
+            for page in range(1, (num_results+99)//100 + 1):
+                if page>1:
+                    html = manager.request('GET', USER_SEARCH.format(trigraph) +
+                            '&pageID={}'.format(page))
+                    soup = bs4.BeautifulSoup(html, "lxml")
+                users = soup.find_all("div", "username")
+                for u in users:
+                    m = user_re.search(u.decode())
+                    if m is None: continue
+                    yield m.group(1)
+        except:
+            time.sleep(60)
 
 def getUserRatings(user):
     escaped_user = user.translate(str.maketrans(r'/\?%*:|"<>', '__________'))
@@ -55,7 +58,7 @@ def getUserRatings(user):
         while True:
             html = manager.request('GET', collection_url.format(urllib.parse.quote(user)))
             if html.status != 202: break
-            time.sleep(0.7)
+            time.sleep(2)
         if html.status != 200:
             print("dying on", collection_url.format(urllib.parse.quote(user)))
             exit()
@@ -81,12 +84,17 @@ for userfile in glob.iglob('./cached_users/*/*.xml'):
     if len(d)==0: continue
     if int(bs4.BeautifulSoup(d).find('items').get('totalitems'))>10:
         ten_games += 1
+        if ten_games % 100 == 0:
+            print(ten_games)
 
 for u in userGen():
-    print('getting', u)
-    g = getUserRatings(u)
-    time.sleep(0.2 + randint(0,10)/10)
-    print('got', u, g, ten_games)
-    if g>10:
-        ten_games += 1
-        if ten_games >= 2000: break
+    try:
+        g = getUserRatings(u)
+        time.sleep(2.0 + randint(0,20)/10)
+        if g>10:
+            ten_games += 1
+            if ten_games >= 2000: break
+        print(u, g, ten_games)
+        if randint(1,200)==1: time.sleep(60)
+    except:
+        time.sleep(60)
