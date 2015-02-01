@@ -1,5 +1,3 @@
 cached_users
 .DS_Store
-matrix
-matrix.games
-matrix.users
+data.h5
