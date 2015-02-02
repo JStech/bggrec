@@ -16,12 +16,14 @@ recommend <- function(user) {
   numerator = colSums(weightedRatings, na.rm = TRUE)
   # add an arbitrary smoothing constant, so we don't just recommend games that
   # one person rated 10/10
-  denominator = colSums(userSim[-user,user] * (!is.na(weightedRatings))) + 5
-  predictedRating = numerator / numRatings
+  denominator = colSums(userSim[-user,user] * (!is.na(weightedRatings)),
+                        na.rm=TRUE) + 5
+  predictedRating = numerator / denominator
 
   # build output
   numGames = length(predictedRating)
   game <- (1:numGames)[order(-predictedRating)]
   rating <- ratings[user,order(-predictedRating)]
-  return(data.frame(game, predictedRating[order(-predictedRating)], rating))
+  predictedRating = sort(predictedRating, decreasing = TRUE)
+  return(data.frame(game, predictedRating, rating))
 }
