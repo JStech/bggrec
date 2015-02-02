@@ -20,9 +20,8 @@ na_cosine <- function(m) {
 NUM_GAMES = 1000
 
 # read in sparse matrix
-x <- scan('matrix', what=list(integer(), integer(), numeric()))
-M <- matrix(NA, max(x[[1]]), max(x[[2]]))
-M[cbind(x[[1]], x[[2]])] <- x[[3]]
+M <- t(h5read('data.h5', 'training_data/ratings'))
+M[is.nan(M)] <- NA
 
 # take top NUM_GAMES games (by # of ratings)
 topM = M[,1:NUM_GAMES]
@@ -30,6 +29,5 @@ topM = M[,1:NUM_GAMES]
 # calculate user similarity
 userSimilarity = na_cosine(topM)
 
-h5createFile('data.h5')
 h5createGroup('data.h5', 'model')
 h5write(userSimilarity, 'data.h5', 'model/userSim')
